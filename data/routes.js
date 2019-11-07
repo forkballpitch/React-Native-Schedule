@@ -12,113 +12,114 @@ const cors = require('cors');
 
 //mqtt
 
-// const mqtt = require('mqtt');
+const mqtt = require('mqtt');
 
-// const options = {
+const options = {
 
-//     host: '127.0.0.1',
+host: '127.0.0.1',
 
-//     port: 1883,
+port: 1883,
 
-//     protocol: 'mqtt',
+protocol: 'mqtt',
 
-//     username: "vhadmin",
+username:"vhadmin",
 
-//     password: "vh12345!",
+password:"vh12345!",
 
-// };
+};
 
-// const client = mqtt.connect("mqtt://localhost:1883");
+const client = mqtt.connect("mqtt://localhost:1883");
 
+ 
 
+client.on("error", (error) => {
 
-// client.on("error", (error) => {
+console.log("Can't connect" + error);
 
-//     console.log("Can't connect" + error);
+}
 
-// }
+);
 
-// );
+ 
 
+var optionspub = {
 
+retain:false,
 
-// var optionspub = {
+qos:1
 
-//     retain: true,
+};
 
-//     qos: 1
+ 
 
-// };
+var mqttstr = "schedule,"
 
-
-
-// var mqtt = "schedule,"
-
-
+ 
 
 //mqtt end
 
-
+ 
 
 app.use(bodyParser.json());
 
 app.use(cors());
 
-
+ 
 
 const db = mysql.createConnection({
 
-    host: 'localhost',
+host : 'localhost',
 
-    user: 'root',
+user : 'vhadmin',
 
-    password: '1234',
+password : 'vh12345!',
 
-    database: 'smartoffice'
+database : 'smartoffice'
 
 });
 
-
+ 
 
 db.connect();
 
+ 
 
+app.get('/data', function(req,res){
 
-app.get('/data', function (req, res) {
+var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
 
-    var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+db.query(sql, (err, result)=>{
 
-    db.query(sql, (err, result) => {
+if(err) throw err;
 
-        if (err) throw err;
-
-        res.send(result);
-
-    });
+res.send(result);
 
 });
 
+});
 
+ 
 
-app.post('/createtask', function (req, res) {
+app.post('/createtask', function(req, res){
 
-    var data = { scheduledata: req.body.scheduledata };
+var data = {scheduledata:req.body.scheduledata};
 
-    var sql = 'INSERT INTO tb_schedule SET ?';
+var sql = 'INSERT INTO tb_schedule SET ?';
 
-    db.query(sql, data, (err, result) => {
+db.query(sql, data, (err, result)=>{
 
-        if (err) throw err;
+if(err) throw err;
 
-        res.send({
+res.send({
 
-            status: 'success',
-
-        });
-
-    });
+status: 'success',
 
 });
+
+});
+
+});
+
 
 
 
@@ -127,173 +128,183 @@ app.post('/createtask', function (req, res) {
 
 //get speakers/{id}/schedules œºÄÉÁìÀ» Á¶ÈžÇÑŽÙ.
 
-app.get('/api/v2/smartoffice/speakers/:id/schedules', function (req, res) {
+app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
 
-    var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
 
-    db.query(sql, (err, result) => {
+db.query(sql, (err, result)=>{
 
-        if (err) throw err;
+if(err) throw err;
 
+if(result.length > 0){
+    
         const value = result[0].scheduledata;
+	 
+	if (value !== null) {
 
+		const todoList = JSON.parse(value);
 
+		var aJsonArray = new Array();
 
-        if (value !== null) {
+		for(var i = 0; i < todoList.length ;i++){
 
-            const todoList = JSON.parse(value);
+		for(var j = 0; j < todoList[i].todoList.length ;j++){
 
-            var aJsonArray = new Array();
+		var aJson = new Object();
 
-            for (var i = 0; i < todoList.length; i++) {
+		aJson.title = todoList[i].todoList[j].title;
 
-                for (var j = 0; j < todoList[i].todoList.length; j++) {
+		aJson.notes = todoList[i].todoList[j].notes;
 
-                    var aJson = new Object();
+		aJson.time = todoList[i].todoList[j].alarm.time;
 
-                    aJson.title = todoList[i].todoList[j].title;
+		aJsonArray.push(aJson);
 
-                    aJson.notes = todoList[i].todoList[j].notes;
+		}
 
-                    aJson.time = todoList[i].todoList[j].alarm.time;
+		}
 
-                    aJsonArray.push(aJson);
+		var sJson = JSON.stringify(aJsonArray);
 
-                }
+                console.log(mqttstr.concat(sJson));
+		client.publish("voiceoffice", mqttstr.concat(sJson), optionspub)
 
-            }
+		res.send(sJson);
 
+	}
 
+	 
 
-            var sJson = JSON.stringify(aJsonArray);
-
-            //client.publish("voiceoffice", mqtt.concat(sJson), optionspub)
-
-            res.send(sJson);
-
-        }
-
-
-
-    });
+}
+else{
+     client.publish("voiceoffice", mqttstr, optionspub)
+     res.send("{\"schedules\": []}");
+}
 
 });
 
+});
 
+ 
 
 //get speakers/{id}/schedules/{date} Æ¯Á€ÀÏÀÇ œºÄÉÁìÀ» Á¶ÈžÇÑŽÙ.
 
-app.get('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, res) {
+app.get('/api/v2/smartoffice/speakers/:id/schedules/:date', function(req,res){
 
-    var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
 
-    db.query(sql, (err, result) => {
+db.query(sql, (err, result)=>{
 
-        if (err) throw err;
-
-        const value = result[0].scheduledata;
-
-        if (value !== null) {
-
-            const todoList = JSON.parse(value);
-
-            const todoLists = todoList.filter(item => {
-
-                item.date = item.date.replace(/-/gi, '');
-
-                if (req.params.date === item.date) {
-
-                    for (var i = 0; i < item.todoList.length; i++) {
-
-                        item.todoList[i].time = item.todoList[i].alarm.time;
-
-                        delete item.todoList[i].key;
-
-                        delete item.todoList[i].color;
-
-                        delete item.todoList[i].alarm;
-
-                    }
-
-                    return item;
-
-                } else
-
-                    return false;
-
-            });
-
-            if (todoLists.length > 0) {
-
-                //mqtt send JSON.stringify(todoLists[0].todoList);
-
-                //client.publish("voiceoffice", mqtt.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
+if(err) throw err;
 
 
+if(result.length > 0){
 
-                const todoListmq = JSON.parse(value);
+	const value = result[0].scheduledata;
+						
+	if (value !== null) {
 
-                const todoListsmq = todoListmq.filter(item => {
+		const todoList = JSON.parse(value);
 
-                    item.date = item.date.replace(/-/gi, '');
+		const todoLists = todoList.filter(item => {
 
-                    if (req.params.date === item.date) {
+		item.date = item.date.replace( /-/gi, '');
 
-                        for (var i = 0; i < item.todoList.length; i++) {
+			if (req.params.date === item.date) {
 
-                            var time = item.todoList[i].alarm.time.split('T');
+				for(var i = 0; i < item.todoList.length ;i++){
 
-                            item.todoList[i].time = time[1].substring(0, 8)
+				item.todoList[i].time = item.todoList[i].alarm.time;
 
-                            delete item.todoList[i].key;
+				delete item.todoList[i].key;
 
-                            delete item.todoList[i].color;
+				delete item.todoList[i].color;
 
-                            delete item.todoList[i].alarm;
+				delete item.todoList[i].alarm;
 
-                            //delete item.todoList[i].title;
+				}
 
-                            item.todoList[i].date = time[0]
+			return item;
 
-                            item.todoList[i].schedule = item.todoList[i].title
+			}else
+			return false;
 
-                            delete item.todoList[i].title;
+		});
 
-                            delete item.todoList[i].notes;
+	if(todoLists.length > 0){
 
-                        }
+	//mqtt send JSON.stringify(todoLists[0].todoList);
 
-                        return item;
+	client.publish("voiceoffice", mqttstr.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
 
-                    } else
+	 
 
-                        return false;
+	const todoListmq = JSON.parse(value);
 
-                });
+	const todoListsmq = todoListmq.filter(item => {
 
+	item.date = item.date.replace( /-/gi, '');
 
+	if (req.params.date === item.date) {
 
-                res.send({
+	for(var i = 0; i < item.todoList.length ;i++){
 
-                    schedules: todoListsmq[0].todoList
+	var time = item.todoList[i].alarm.time.split('T');
 
-                });
+	item.todoList[i].time = time[1].substring(0,8)
 
+	delete item.todoList[i].key;
 
+	delete item.todoList[i].color;
 
+	delete item.todoList[i].alarm;
 
+	//delete item.todoList[i].title;
 
-            }
+	item.todoList[i].date = time[0]
 
-            else
+	item.todoList[i].schedule = item.todoList[i].title
 
-                res.send("fail");
+	delete item.todoList[i].title;
 
-        }
+	delete item.todoList[i].notes;
 
+	}
 
+	return item;
 
-    });
+	}else
+
+	return false;
+
+	});
+
+	 
+
+	res.send({
+
+	schedules: todoListsmq[0].todoList
+
+	});
+
+	 
+
+	 
+
+	}
+
+	else
+
+	res.send("fail");
+
+	}	
+
+ }else{
+     client.publish("voiceoffice", mqttstr, optionspub)
+     res.send("{\"schedules\": []}");
+ }
+
+});
 
 });
 
@@ -301,218 +312,219 @@ app.get('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, res) 
 
 //get speakers/{id}/schedules œºÄÉÁìÀ» µî·ÏÇÑŽÙ.
 
-app.post('/api/v2/smartoffice/speakers/:id/schedules', function (req, res) {
+app.post('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
 
-    var time = req.body.schedule.date.concat('T', req.body.schedule.time, ':00.000Z')
+var hour = req.body.schedule.time.substring(0,2);
+var minute = req.body.schedule.time.substring(2,4);
+var time = req.body.schedule.date.concat('T',hour,':',minute,':00.000Z');
 
-    const creatTodo = {
+const creatTodo = {
 
-        key: uuid(),
+key: uuid(),
 
-        todoList: [
+todoList: [
 
-            {
+{
 
-                key: uuid(),
+key: uuid(),
 
-                title: req.body.schedule.schedule,
+title: req.body.schedule.schedule,
 
-                notes: req.body.schedule.schedule,
+notes: req.body.schedule.schedule,
 
-                alarm: {
+alarm: {
 
-                    time: time,
+time: time,
 
-                    isOn: false,
+isOn: false,
 
-                    createEventAsyncRes: '',
+createEventAsyncRes:'',
 
-                },
+},
 
-                color: `rgb(${Math.floor(
+color: `rgb(${Math.floor(
 
-                    Math.random() * Math.floor(256)
+Math.random() * Math.floor(256)
 
-                )},${Math.floor(Math.random() * Math.floor(256))},${Math.floor(
+)},${Math.floor(Math.random() * Math.floor(256))},${Math.floor(
 
-                    Math.random() * Math.floor(256)
+Math.random() * Math.floor(256)
 
-                )})`,
+)})`,
 
-            },
+},
 
-        ]
+]
 
-    };
+};
 
+console.log(creatTodo);
+ 
 
+var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
 
-    var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+db.query(sql, (err, result)=>{
 
-    db.query(sql, (err, result) => {
+if(err) throw err;
 
-        if (err) throw err;
+console.log(result);
 
-        const value = result[0].scheduledata;
+/* added by KJH */
+if(result.length == 0) {
 
-        if (value !== null) {
+	result.push({'scheduledata' : "[\"dummy\"]"});
 
-            const todoList = JSON.parse(value);
+}
 
-            const todoLists = todoList.filter(item => {
+/* commented by KJH */
+//if(result.length > 0){ 
+	const value = result[0].scheduledata;
 
-                if (req.body.schedule.date === item.date)
+		if (value !== null) {
 
-                    return true;
+		todoList = JSON.parse(value);
+		
+		/* added by KJH */
+		todoList = todoList.filter(el => {
+		  return el != 'dummy';
+		});
 
-                else
 
-                    return false;
+		const todoLists = todoList.filter(item => {
 
-            });
+		if (req.body.schedule.date === item.date)
 
-            if (todoLists.length > 0) {
+		return true;
 
-                todoLists[0].todoList.push(creatTodo.todoList[0]);
+		else
 
-                var data = { scheduledata: JSON.stringify(todoList) };
+		return false;
 
-                var sql = 'INSERT INTO tb_schedule SET ?';
+		});
 
-                db.query(sql, data, (err, result) => {
+		if(todoLists.length > 0){
 
-                    if (err) throw err;
+		todoLists[0].todoList.push(creatTodo.todoList[0]);
 
-                    res.send({
+		var data = {scheduledata:JSON.stringify(todoList)};
 
-                        status: 'success',
+		var sql = 'INSERT INTO tb_schedule SET ?';
 
-                    });
+		db.query(sql, data, (err, result)=>{
 
-                });
+		if(err) throw err;
 
-            }
+		res.send({
 
-            else {
+		status: 'success',
 
-                //not exist date...
+		});
 
-                const creatTodo = {
+		});
 
-                    key: uuid(),
+		}
 
-                    date: req.body.schedule.date,
+		else{
 
-                    todoList: [
+		//not exist date...
+		console.log('not exist date');
 
-                        {
+		const creatTodo = {
 
-                            key: uuid(),
+		key: uuid(),
 
-                            title: req.body.schedule.schedule,
+		date: req.body.schedule.date,
 
-                            notes: req.body.schedule.schedule,
+		todoList: [
 
-                            alarm: {
+		{
 
-                                time: time,
+		key: uuid(),
 
-                                isOn: false,
+		title: req.body.schedule.schedule,
 
-                                createEventAsyncRes: '',
+		notes: req.body.schedule.schedule,
 
-                            },
+		alarm: {
 
-                            color: `rgb(${Math.floor(
+		time: time,
 
-                                Math.random() * Math.floor(256)
+		isOn: false,
 
-                            )},${Math.floor(Math.random() * Math.floor(256))},${Math.floor(
+		createEventAsyncRes: '',
 
-                                Math.random() * Math.floor(256)
+		},
 
-                            )})`,
+		color: `rgb(${Math.floor(
+		Math.random() * Math.floor(256)
+		)},${Math.floor(Math.random() * Math.floor(256))},${Math.floor(
+		Math.random() * Math.floor(256)
+		)})`,
 
-                        },
+		},
 
-                    ],
+		],
 
-                    markedDot: {
+		markedDot: {
 
-                        date: 'currentDay',
+		date: 'currentDay',
 
-                        dots: [
+		dots: [
 
-                            {
+		{
 
-                                key: uuid(),
+		key: uuid(),
 
-                                color: '#002375',
+		color: '#002375',
 
-                                selectedDotColor: '#002375',
+		selectedDotColor: '#002375',
 
-                            },
+		},
 
-                        ],
+		],
 
-                    },
+		},
+		};
 
-                };
+		 
 
+		todoList.push(creatTodo);		
+		var data = {scheduledata:JSON.stringify(todoList)};
+		var sql = 'INSERT INTO tb_schedule SET ?';
+		db.query(sql, data, (err, result)=>{
+		if(err) throw err;
+		res.send({
+			status: 'success',
+		});
+		});
 
+		}
+		}
 
-                todoList.push(creatTodo);
+/* commented by KJH */
+/*
+}else{
+     client.publish("voiceoffice", mqttstr, optionspub)
+     res.send("{\"schedules\": []}");
+}*/
 
-                console.log(todoList);
+});
 
-
-
-                var data = { scheduledata: JSON.stringify(todoList) };
-
-                var sql = 'INSERT INTO tb_schedule SET ?';
-
-                db.query(sql, data, (err, result) => {
-
-                    if (err) throw err;
-
-                    res.send({
-
-                        status: 'success',
-
-                    });
-
-                });
-
-
-
-                // res.send("fail");
-
-            }
-
-        }
-
-    });
-
-
+ 
 
 });
 
 
 
-//get speakers/{id}/schedules/date Æ¯Á€ÀÏ/Æ¯Á€œÃ°£ÀÇ œºÄÉÁìÀ» »èÁŠÇÑŽÙ.
 
+
+//get speakers/{id}/schedules/date remove date and time
 app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date/:time', function (req, res) {
-
     var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
-
     db.query(sql, (err, result) => {
-
         if (err) throw err;
-
         const value = result[0].scheduledata;
-
         var deleteyn = 0;
-
         if (value !== null) {
             const todoList = JSON.parse(value);
             const todoLists = todoList.filter(item => {
@@ -545,36 +557,21 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date/:time', function (r
   
 
             if (todoLists.length > 0 && deleteyn > 0) {
-              //  console.log(todoLists)
-              //  console.log(deleteyn)
                 var data = { scheduledata: JSON.stringify(todoLists) };
-
                 var sql = 'INSERT INTO tb_schedule SET ?';
-
                 db.query(sql, data, (err, result) => {
-
                     if (err) throw err;
-
+ 		    client.publish("voiceoffice", mqttstr, optionspub)
                     res.send({
-
                         schedule: { deleted: deleteyn }
-
                     });
-
                 });
-
-
-
             }
-
             else {
-
+                client.publish("voiceoffice", mqttstr, optionspub)
                 res.send({
-
                     schedule:
-
                         { deleted: 0 }
-
                 });
 
             }
@@ -587,11 +584,7 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date/:time', function (r
 
 
 
-//get speakers/{id}/schedules/{date}/{time} Æ¯Á€œÃ°£ÀÇ œºÄÉÁìÀ» »èÁŠÇÑŽÙ.
-
-
-
-//get speakers/{id}/schedules/date Æ¯Á€ÀÏ/Æ¯Á€œÃ°£ÀÇ œºÄÉÁìÀ» »èÁŠÇÑŽÙ.
+//get speakers/{id}/schedules/date remove only date
 
 app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, res) {
 
@@ -624,6 +617,7 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, re
                 var sql = 'INSERT INTO tb_schedule SET ?';
                 db.query(sql, data, (err, result) => {
                     if (err) throw err;
+                    client.publish("voiceoffice", mqttstr, optionspub)
                     res.send({
                         schedule: { deleted: 1 }
                     });
@@ -631,9 +625,9 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, re
             }
 
             else {
+                client.publish("voiceoffice", mqttstr, optionspub)
                 res.send({
-                    schedule:
-                        { deleted: 0 }
+                    schedule:{ deleted: 0 }
                 });
 
             }
@@ -646,9 +640,12 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, re
 
 
 
-app.listen(3210, () => {
+ 
 
-    console.log('Server port 3210')
+app.listen(3210, ()=>{
+
+console.log('Server port 3210')
 
 });
 
+ 
