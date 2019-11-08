@@ -70,9 +70,9 @@ const db = mysql.createConnection({
 
 host : 'localhost',
 
-user : 'root',
+user : 'vhadmin',
 
-password : '1234',
+password : 'vh12345!',
 
 database : 'smartoffice'
 
@@ -123,75 +123,6 @@ status: 'success',
 
 
 
-// app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
-
-// var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
-
-// db.query(sql, (err, result)=>{
-
-// if(err) throw err;
-
-// if(result.length > 0){
-    
-//         const value = result[0].scheduledata;
-	 
-// 	if (value !== null) {
-
-// 		const todoList = JSON.parse(value);
-
-// 		var aJsonArray = new Array();
-
-// 		for(var i = 0; i < todoList.length ;i++){
-
-// 		for(var j = 0; j < todoList[i].todoList.length ;j++){
-
-// 		var aJson = new Object();
-
-// 		aJson.title = todoList[i].todoList[j].title;
-
-// 		aJson.notes = todoList[i].todoList[j].notes;
-
-// 		aJson.time = todoList[i].todoList[j].alarm.time;
-
-// 		aJsonArray.push(aJson);
-
-// 		}
-
-// 		}
-
-// 		var sJson = JSON.stringify(aJsonArray);
-
-//                 console.log(mqttstr.concat(sJson));
-// 		client.publish("voiceoffice", mqttstr.concat(sJson), optionspub)
-
-
-    
-//     res.send(aJsonArray);
-    
-
-// 	  res.send({
-
-//     schedules: todoListsmq[0].todoList
-  
-//     });
-  
-
-// 	}
-
-	 
-
-// }
-// else{
-//      client.publish("voiceoffice", mqttstr, optionspub)
-//      res.send("{\"schedules\": []}");
-// }
-
-// });
-
-// });
-
-
-
 app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
 
   var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
@@ -212,7 +143,7 @@ app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
       });
     if(todoLists.length > 0){
   
-  
+ 
     client.publish("voiceoffice", mqttstr.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
     const todoListmq = JSON.parse(value);
     const todoListsmq = todoListmq.filter(item => {
@@ -253,7 +184,6 @@ app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
  
 
 //get speakers/{id}/schedules/{date} Æ¯Á€ÀÏÀÇ œºÄÉÁìÀ» Á¶ÈžÇÑŽÙ.
-
 app.get('/api/v2/smartoffice/speakers/:id/schedules/:date', function(req,res){
 
 var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
@@ -299,7 +229,7 @@ if(result.length > 0){
 	if(todoLists.length > 0){
 
 	//mqtt send JSON.stringify(todoLists[0].todoList);
-
+        console.log(mqttstr.concat(JSON.stringify(todoLists[0].todoList)));
 	client.publish("voiceoffice", mqttstr.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
 
 	 
