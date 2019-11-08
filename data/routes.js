@@ -70,9 +70,9 @@ const db = mysql.createConnection({
 
 host : 'localhost',
 
-user : 'vhadmin',
+user : 'root',
 
-password : 'vh12345!',
+password : '1234',
 
 database : 'smartoffice'
 
@@ -123,68 +123,133 @@ status: 'success',
 
 
 
+// app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
 
-//schedule register from platform
+// var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
 
-//get speakers/{id}/schedules œºÄÉÁìÀ» Á¶ÈžÇÑŽÙ.
+// db.query(sql, (err, result)=>{
+
+// if(err) throw err;
+
+// if(result.length > 0){
+    
+//         const value = result[0].scheduledata;
+	 
+// 	if (value !== null) {
+
+// 		const todoList = JSON.parse(value);
+
+// 		var aJsonArray = new Array();
+
+// 		for(var i = 0; i < todoList.length ;i++){
+
+// 		for(var j = 0; j < todoList[i].todoList.length ;j++){
+
+// 		var aJson = new Object();
+
+// 		aJson.title = todoList[i].todoList[j].title;
+
+// 		aJson.notes = todoList[i].todoList[j].notes;
+
+// 		aJson.time = todoList[i].todoList[j].alarm.time;
+
+// 		aJsonArray.push(aJson);
+
+// 		}
+
+// 		}
+
+// 		var sJson = JSON.stringify(aJsonArray);
+
+//                 console.log(mqttstr.concat(sJson));
+// 		client.publish("voiceoffice", mqttstr.concat(sJson), optionspub)
+
+
+    
+//     res.send(aJsonArray);
+    
+
+// 	  res.send({
+
+//     schedules: todoListsmq[0].todoList
+  
+//     });
+  
+
+// 	}
+
+	 
+
+// }
+// else{
+//      client.publish("voiceoffice", mqttstr, optionspub)
+//      res.send("{\"schedules\": []}");
+// }
+
+// });
+
+// });
+
+
 
 app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
 
-var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+  var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+  db.query(sql, (err, result)=>{
+  if(err) throw err;
+  if(result.length > 0){
+    const value = result[0].scheduledata;
+    if (value !== null) {
+      const todoList = JSON.parse(value);
+      const todoLists = todoList.filter(item => {
+          for(var i = 0; i < item.todoList.length ;i++){
+            item.todoList[i].time = item.todoList[i].alarm.time;
+            delete item.todoList[i].key;
+            delete item.todoList[i].color;
+            delete item.todoList[i].alarm;
+          }
+        return item;
+      });
+    if(todoLists.length > 0){
+  
+  
+    client.publish("voiceoffice", mqttstr.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
+    const todoListmq = JSON.parse(value);
+    const todoListsmq = todoListmq.filter(item => {
 
-db.query(sql, (err, result)=>{
+      for(var i = 0; i < item.todoList.length ;i++){
+        var time = item.todoList[i].alarm.time.split('T');
+        item.todoList[i].time = time[1].substring(0,5)
+        delete item.todoList[i].key;
+        delete item.todoList[i].color;
+        delete item.todoList[i].alarm;
+        item.todoList[i].date = time[0]
+        item.todoList[i].schedule = item.todoList[i].title
+        delete item.todoList[i].title;
+        delete item.todoList[i].notes;
+      }
+      return item;
 
-if(err) throw err;
-
-if(result.length > 0){
-    
-        const value = result[0].scheduledata;
-	 
-	if (value !== null) {
-
-		const todoList = JSON.parse(value);
-
-		var aJsonArray = new Array();
-
-		for(var i = 0; i < todoList.length ;i++){
-
-		for(var j = 0; j < todoList[i].todoList.length ;j++){
-
-		var aJson = new Object();
-
-		aJson.title = todoList[i].todoList[j].title;
-
-		aJson.notes = todoList[i].todoList[j].notes;
-
-		aJson.time = todoList[i].todoList[j].alarm.time;
-
-		aJsonArray.push(aJson);
-
-		}
-
-		}
-
-		var sJson = JSON.stringify(aJsonArray);
-
-                console.log(mqttstr.concat(sJson));
-		client.publish("voiceoffice", mqttstr.concat(sJson), optionspub)
-
-		res.send(sJson);
-
-	}
-
-	 
-
-}
-else{
-     client.publish("voiceoffice", mqttstr, optionspub)
-     res.send("{\"schedules\": []}");
-}
-
-});
-
-});
-
+    });
+  
+     
+    res.send({
+      schedules: todoListsmq[0].todoList
+    });
+    }
+    else
+    res.send("fail");
+    }	
+  
+   }else{
+       client.publish("voiceoffice", mqttstr, optionspub)
+       res.send("{\"schedules\": []}");
+   }
+  
+  });
+  
+  });
+  
  
 
 //get speakers/{id}/schedules/{date} Æ¯Á€ÀÏÀÇ œºÄÉÁìÀ» Á¶ÈžÇÑŽÙ.
@@ -251,7 +316,7 @@ if(result.length > 0){
 
 	var time = item.todoList[i].alarm.time.split('T');
 
-	item.todoList[i].time = time[1].substring(0,8)
+	item.todoList[i].time = time[1].substring(0,5)
 
 	delete item.todoList[i].key;
 
@@ -343,13 +408,9 @@ createEventAsyncRes:'',
 },
 
 color: `rgb(${Math.floor(
-
 Math.random() * Math.floor(256)
-
 )},${Math.floor(Math.random() * Math.floor(256))},${Math.floor(
-
 Math.random() * Math.floor(256)
-
 )})`,
 
 },
@@ -371,9 +432,7 @@ console.log(result);
 
 /* added by KJH */
 if(result.length == 0) {
-
 	result.push({'scheduledata' : "[\"dummy\"]"});
-
 }
 
 /* commented by KJH */
@@ -647,5 +706,3 @@ app.listen(3210, ()=>{
 console.log('Server port 3210')
 
 });
-
- 
