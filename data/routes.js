@@ -1,130 +1,69 @@
 const uuid = require('uuid');
-
 const express = require('express');
-
 const app = express();
-
 const mysql = require('mysql');
-
 const bodyParser = require('body-parser');
-
 const cors = require('cors');
-
 //mqtt
-
 const mqtt = require('mqtt');
-
 const options = {
-
-host: '127.0.0.1',
-
-port: 1883,
-
-protocol: 'mqtt',
-
-username:"vhadmin",
-
-password:"vh12345!",
-
+	host: '127.0.0.1',
+	port: 1883,
+	protocol: 'mqtt',
+	username:"vhadmin",
+	password:"vh12345!",
 };
 
 const client = mqtt.connect("mqtt://localhost:1883");
 
- 
-
 client.on("error", (error) => {
-
-console.log("Can't connect" + error);
-
+	console.log("Can't connect" + error);
 }
-
 );
 
  
 
 var optionspub = {
-
-retain:false,
-
-qos:1
-
+	retain:false,
+	qos:1
 };
 
- 
-
 var mqttstr = "schedule,"
-
- 
-
 //mqtt end
-
- 
-
 app.use(bodyParser.json());
-
 app.use(cors());
 
  
-
 const db = mysql.createConnection({
-
-host : 'localhost',
-
-user : 'vhadmin',
-
-password : 'vh12345!',
-
-database : 'smartoffice'
-
+	host : 'localhost',
+	user : 'vhadmin',
+	password : 'vh12345!',
+	database : 'smartoffice'
 });
-
- 
 
 db.connect();
-
- 
-
 app.get('/data', function(req,res){
-
-var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
-
-db.query(sql, (err, result)=>{
-
-if(err) throw err;
-
-res.send(result);
-
-});
-
+	var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+	db.query(sql, (err, result)=>{
+	if(err) throw err;
+	res.send(result);
+	});
 });
 
  
-
 app.post('/createtask', function(req, res){
-
 var data = {scheduledata:req.body.scheduledata};
-
 var sql = 'INSERT INTO tb_schedule SET ?';
-
 db.query(sql, data, (err, result)=>{
-
 if(err) throw err;
-
-res.send({
-
-status: 'success',
-
+	res.send({
+		status: 'success',
+	});
 });
-
 });
-
-});
-
-
 
 
 app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
-
   var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
   db.query(sql, (err, result)=>{
   if(err) throw err;
@@ -143,21 +82,22 @@ app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
       });
     if(todoLists.length > 0){
   
- 
     client.publish("voiceoffice", mqttstr.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
     const todoListmq = JSON.parse(value);
     const todoListsmq = todoListmq.filter(item => {
 
       for(var i = 0; i < item.todoList.length ;i++){
         var time = item.todoList[i].alarm.time.split('T');
-        item.todoList[i].time = time[1].substring(0,5)
-        delete item.todoList[i].key;
-        delete item.todoList[i].color;
-        delete item.todoList[i].alarm;
-        item.todoList[i].date = time[0]
-        item.todoList[i].schedule = item.todoList[i].title
-        delete item.todoList[i].title;
-        delete item.todoList[i].notes;
+	if(time[1] != undefined){
+		item.todoList[i].time = time[1].substring(0,5)
+		delete item.todoList[i].key;
+		delete item.todoList[i].color;
+		delete item.todoList[i].alarm;
+		item.todoList[i].date = time[0]
+		item.todoList[i].schedule = item.todoList[i].title
+		delete item.todoList[i].title;
+		delete item.todoList[i].notes;
+	}
       }
       return item;
 
@@ -169,7 +109,7 @@ app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
     });
     }
     else
-    res.send("fail");
+     res.send("{\"schedules\": []}");
     }	
   
    }else{
@@ -183,51 +123,29 @@ app.get('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
   
  
 
-//get speakers/{id}/schedules/{date} Æ¯Á€ÀÏÀÇ œºÄÉÁìÀ» Á¶ÈžÇÑŽÙ.
+//get speakers/{id}/schedules/{date} 
 app.get('/api/v2/smartoffice/speakers/:id/schedules/:date', function(req,res){
-
 var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
-
 db.query(sql, (err, result)=>{
-
 if(err) throw err;
-
-
 if(result.length > 0){
-
-	const value = result[0].scheduledata;
-						
+	const value = result[0].scheduledata;						
 	if (value !== null) {
-
 		const todoList = JSON.parse(value);
-
 		const todoLists = todoList.filter(item => {
-
 		item.date = item.date.replace( /-/gi, '');
-
 			if (req.params.date === item.date) {
-
 				for(var i = 0; i < item.todoList.length ;i++){
-
 				item.todoList[i].time = item.todoList[i].alarm.time;
-
 				delete item.todoList[i].key;
-
 				delete item.todoList[i].color;
-
 				delete item.todoList[i].alarm;
-
 				}
-
 			return item;
-
 			}else
 			return false;
-
 		});
-
 	if(todoLists.length > 0){
-
 	//mqtt send JSON.stringify(todoLists[0].todoList);
         console.log(mqttstr.concat(JSON.stringify(todoLists[0].todoList)));
 	client.publish("voiceoffice", mqttstr.concat(JSON.stringify(todoLists[0].todoList)), optionspub)
@@ -235,39 +153,21 @@ if(result.length > 0){
 	 
 
 	const todoListmq = JSON.parse(value);
-
 	const todoListsmq = todoListmq.filter(item => {
-
 	item.date = item.date.replace( /-/gi, '');
-
 	if (req.params.date === item.date) {
-
 	for(var i = 0; i < item.todoList.length ;i++){
-
 	var time = item.todoList[i].alarm.time.split('T');
-
 	item.todoList[i].time = time[1].substring(0,5)
-
 	delete item.todoList[i].key;
-
 	delete item.todoList[i].color;
-
 	delete item.todoList[i].alarm;
-
-	//delete item.todoList[i].title;
-
 	item.todoList[i].date = time[0]
-
 	item.todoList[i].schedule = item.todoList[i].title
-
 	delete item.todoList[i].title;
-
 	delete item.todoList[i].notes;
-
 	}
-
 	return item;
-
 	}else
 
 	return false;
@@ -275,25 +175,14 @@ if(result.length > 0){
 	});
 
 	 
-
 	res.send({
-
-	schedules: todoListsmq[0].todoList
-
-	});
-
+		schedules: todoListsmq[0].todoList
+	});	 
 	 
-
-	 
-
 	}
-
 	else
-
-	res.send("fail");
-
+	 res.send("{\"schedules\": []}");
 	}	
-
  }else{
      client.publish("voiceoffice", mqttstr, optionspub)
      res.send("{\"schedules\": []}");
@@ -305,8 +194,7 @@ if(result.length > 0){
 
 
 
-//get speakers/{id}/schedules œºÄÉÁìÀ» µî·ÏÇÑŽÙ.
-
+//get speakers/{id}/schedules
 app.post('/api/v2/smartoffice/speakers/:id/schedules', function(req,res){
 
 var hour = req.body.schedule.time.substring(0,2);
@@ -314,29 +202,17 @@ var minute = req.body.schedule.time.substring(2,4);
 var time = req.body.schedule.date.concat('T',hour,':',minute,':00.000Z');
 
 const creatTodo = {
-
 key: uuid(),
-
 todoList: [
-
 {
-
-key: uuid(),
-
-title: req.body.schedule.schedule,
-
-notes: req.body.schedule.schedule,
-
-alarm: {
-
-time: time,
-
-isOn: false,
-
-createEventAsyncRes:'',
-
+	key: uuid(),
+	title: req.body.schedule.schedule,
+	notes: req.body.schedule.schedule,
+	alarm: {
+	time: time,
+	isOn: false,
+	createEventAsyncRes:'',
 },
-
 color: `rgb(${Math.floor(
 Math.random() * Math.floor(256)
 )},${Math.floor(Math.random() * Math.floor(256))},${Math.floor(
@@ -344,35 +220,22 @@ Math.random() * Math.floor(256)
 )})`,
 
 },
-
 ]
-
 };
-
 console.log(creatTodo);
- 
-
 var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
-
 db.query(sql, (err, result)=>{
-
 if(err) throw err;
-
 console.log(result);
-
 /* added by KJH */
 if(result.length == 0) {
 	result.push({'scheduledata' : "[\"dummy\"]"});
 }
-
 /* commented by KJH */
 //if(result.length > 0){ 
 	const value = result[0].scheduledata;
-
 		if (value !== null) {
-
-		todoList = JSON.parse(value);
-		
+		todoList = JSON.parse(value);		
 		/* added by KJH */
 		todoList = todoList.filter(el => {
 		  return el != 'dummy';
@@ -380,33 +243,19 @@ if(result.length == 0) {
 
 
 		const todoLists = todoList.filter(item => {
-
 		if (req.body.schedule.date === item.date)
-
 		return true;
-
 		else
-
 		return false;
-
 		});
-
 		if(todoLists.length > 0){
-
 		todoLists[0].todoList.push(creatTodo.todoList[0]);
-
 		var data = {scheduledata:JSON.stringify(todoList)};
-
 		var sql = 'INSERT INTO tb_schedule SET ?';
-
 		db.query(sql, data, (err, result)=>{
-
 		if(err) throw err;
-
 		res.send({
-
 		status: 'success',
-
 		});
 
 		});
