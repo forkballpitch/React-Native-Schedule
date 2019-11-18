@@ -21,12 +21,96 @@ client.on("error", (error) => {
 }
 );
 
- 
+client.on("connect", () => {	
+	console.log("connected ~:> "+ client.connected);
+	client.subscribe("voiceoffice");
+});
 
 var optionspub = {
 	retain:false,
 	qos:1
 };
+
+/* for Mirror Main UI Today Schedule */
+const setTodaySchedule = function () {
+
+    var format = new Date();
+
+    var year = format.getFullYear();
+    var month = format.getMonth() + 1;
+    if(month<10) month = '0' + month;
+    var date = format.getDate();
+    if(date<10) date = '0' + date;
+    var date = year + "" +  month + "" +  date;
+
+
+    console.log(date);
+
+	var sql = 'SELECT scheduledata FROM tb_schedule order by id desc LIMIT 1';
+	db.query(sql, (err, result)=>{
+	if(err) throw err;
+	if(result.length > 0){
+		const value = result[0].scheduledata;						
+		if (value !== null) {
+			const todoList = JSON.parse(value);
+			const todoLists = todoList.filter(item => {
+			item.date = item.date.replace( /-/gi, '');
+				if (date === item.date) {
+					for(var i = 0; i < item.todoList.length ;i++){
+					item.todoList[i].time = item.todoList[i].alarm.time;
+					delete item.todoList[i].key;
+					delete item.todoList[i].color;
+					delete item.todoList[i].alarm;
+					}
+				return item;
+				}else
+				return false;
+			});
+		if(todoLists.length > 0){
+		//mqtt send JSON.stringify(todoLists[0].todoList);
+		console.log("setschedule,".concat(JSON.stringify(todoLists[0].todoList)));
+		client.publish("voiceoffice", "setschedule,".concat(JSON.stringify(todoLists[0].todoList)), optionspub)
+
+		const todoListmq = JSON.parse(value);
+		const todoListsmq = todoListmq.filter(item => {
+		item.date = item.date.replace( /-/gi, '');
+		if (date === item.date) {
+		for(var i = 0; i < item.todoList.length ;i++){
+		var time = item.todoList[i].alarm.time.split('T');
+		item.todoList[i].time = time[1].substring(0,5)
+		delete item.todoList[i].key;
+		delete item.todoList[i].color;
+		delete item.todoList[i].alarm;
+		item.todoList[i].date = time[0]
+		item.todoList[i].schedule = item.todoList[i].title
+		delete item.todoList[i].title;
+		delete item.todoList[i].notes;
+		}
+		return item;
+		}else
+
+		return false;
+
+		});
+
+		}
+		}	
+	 }else{
+	     client.publish("voiceoffice", "setschedule,", optionspub)
+	     res.send("{\"schedules\": []}");
+	 }
+
+	});
+
+}
+
+client.on('message', (topic, message, packet) => {
+	if(message.indexOf("getschedule") != -1) {
+		console.log('getSchedule !');
+		setTodaySchedule();
+	}
+});
+
 
 var mqttstr = "schedule,"
 //mqtt end
@@ -56,6 +140,9 @@ var data = {scheduledata:req.body.scheduledata};
 var sql = 'INSERT INTO tb_schedule SET ?';
 db.query(sql, data, (err, result)=>{
 if(err) throw err;
+
+	setTodaySchedule();
+
 	res.send({
 		status: 'success',
 	});
@@ -331,6 +418,7 @@ if(result.length == 0) {
 		var sql = 'INSERT INTO tb_schedule SET ?';
 		db.query(sql, data, (err, result)=>{
 		if(err) throw err;
+		setTodaySchedule();
 		res.send({
 			status: 'success',
 		});
@@ -400,6 +488,7 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date/:time', function (r
                 db.query(sql, data, (err, result) => {
                     if (err) throw err;
  		    client.publish("voiceoffice", mqttstr, optionspub)
+		    setTodaySchedule();
                     res.send({
                         schedule: { deleted: deleteyn }
                     });
@@ -407,6 +496,7 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date/:time', function (r
             }
             else {
                 client.publish("voiceoffice", mqttstr, optionspub)
+		setTodaySchedule();
                 res.send({
                     schedule:
                         { deleted: 0 }
@@ -441,7 +531,7 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, re
             const todoLists = todoList.filter(item => {
                 var date = item.date.replace(/-/gi, '');
                 if (req.params.date === date) {
-                       deleteyn = 1;
+                       deleteyn = todoList.length;
                        return false;
                 }else{
                     return true;
@@ -457,7 +547,7 @@ app.delete('/api/v2/smartoffice/speakers/:id/schedules/:date', function (req, re
                     if (err) throw err;
                     client.publish("voiceoffice", mqttstr, optionspub)
                     res.send({
-                        schedule: { deleted: 1 }
+                        schedule: { deleted: deleteyn }
                     });
                 });
             }
