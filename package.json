@@ -28,7 +28,7 @@
     "cors": "^2.8.4",
     "mysql": "^2.17.1",
     "express": "^4.17.1",
-    "axios": "^0.18.0"
+    "axios": "^0.21.1"
   },
   "devDependencies": {
     "babel-eslint": "^9.0.0",
@@ -47,7 +47,7 @@
     "cors": "^2.8.4",
     "mysql": "^2.17.1",
     "express": "^4.17.1",
-    "axios": "^0.18.0"
+    "axios": "^0.21.1"
   },
   "private": true
 }
